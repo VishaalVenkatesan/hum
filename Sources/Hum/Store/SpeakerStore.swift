@@ -8,8 +8,9 @@ final class SpeakerStore {
     private(set) var volumes: [String: VolumeState] = [:]
     private(set) var nowPlaying: [String: NowPlaying] = [:]
     private(set) var isDiscovering = false
-    private(set) var errorMessage: String?
+    private(set) var issue: DiscoveryIssue?
     private(set) var sound: [String: SoundSettings] = [:]
+    private(set) var speakerInfo: [String: SpeakerInfo] = [:]
     var selectedGroupID: String?
 
     @ObservationIgnored private var pollTask: Task<Void, Never>?
@@ -58,10 +59,10 @@ final class SpeakerStore {
         isDiscovering = true
         defer { isDiscovering = false }
 
-        let found = await SSDPDiscovery.discover()
-        let candidates = found.union(knownHosts)
+        let result = await SSDPDiscovery.discover()
+        let candidates = result.hosts.union(knownHosts)
         guard !candidates.isEmpty else {
-            errorMessage = "No speakers found on this network"
+            issue = result.isBlocked ? .localNetworkBlocked : .noSpeakers
             return
         }
 
@@ -70,10 +71,10 @@ final class SpeakerStore {
             groups = topology
             knownHosts = Set(topology.flatMap(\.members).map(\.host))
             lastDiscovery = Date()
-            errorMessage = nil
+            issue = nil
             return
         }
-        errorMessage = "Found speakers but couldn't read their groups"
+        issue = result.isBlocked ? .localNetworkBlocked : .unreachable
     }
 
     func refreshStates() async {
@@ -134,6 +135,38 @@ final class SpeakerStore {
         setBass(SoundSettings.flat.bass, for: member)
         setTreble(SoundSettings.flat.treble, for: member)
         setLoudness(SoundSettings.flat.loudness, for: member)
+    }
+
+    func setPlayMode(_ mode: PlayMode, for group: SonosGroup) {
+        nowPlaying[group.id]?.playMode = mode
+        perform(on: group) { try await $0.setPlayMode(mode) }
+    }
+
+    func setCrossfade(_ enabled: Bool, for group: SonosGroup) {
+        nowPlaying[group.id]?.crossfade = enabled
+        perform(on: group) { try await $0.setCrossfade(enabled) }
+    }
+
+    func configureSleepTimer(_ duration: TimeInterval?, for groups: [SonosGroup]) {
+        for group in groups {
+            nowPlaying[group.id]?.sleepTimerEnd = duration.map { Date().addingTimeInterval($0) }
+            perform(on: group) { try await $0.configureSleepTimer(duration) }
+        }
+    }
+
+    func loadSpeakerInfo(for member: SonosMember) async {
+        guard let info = try? await SonosController(host: member.host).speakerInfo() else { return }
+        speakerInfo[member.id] = info
+    }
+
+    func setStatusLight(_ on: Bool, for member: SonosMember) {
+        speakerInfo[member.id]?.statusLight = on
+        Task { try? await SonosController(host: member.host).setStatusLight(on) }
+    }
+
+    func setButtonsLocked(_ locked: Bool, for member: SonosMember) {
+        speakerInfo[member.id]?.buttonsLocked = locked
+        Task { try? await SonosController(host: member.host).setButtonsLocked(locked) }
     }
 
     private func debounce(_ key: String, _ action: @escaping @Sendable () async throws -> Void) {

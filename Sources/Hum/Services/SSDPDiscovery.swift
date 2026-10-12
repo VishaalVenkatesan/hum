@@ -6,15 +6,20 @@ enum SSDPDiscovery {
     private static let multicastPort: UInt16 = 1900
     private static let searchTarget = "urn:schemas-upnp-org:device:ZonePlayer:1"
 
-    static func discover(timeout: TimeInterval = 3) async -> Set<String> {
+    struct Result: Sendable {
+        let hosts: Set<String>
+        let isBlocked: Bool
+    }
+
+    static func discover(timeout: TimeInterval = 3) async -> Result {
         await Task.detached(priority: .userInitiated) {
             search(timeout: timeout)
         }.value
     }
 
-    private static func search(timeout: TimeInterval) -> Set<String> {
+    private static func search(timeout: TimeInterval) -> Result {
         let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        guard fd >= 0 else { return [] }
+        guard fd >= 0 else { return Result(hosts: [], isBlocked: false) }
         defer { close(fd) }
 
         var reuse: Int32 = 1
@@ -38,12 +43,20 @@ enum SSDPDiscovery {
         ].joined(separator: "\r\n")
         let payload = Array(message.utf8)
 
+        var sent = false
+        var unreachable = false
+
         func send() {
             for var target in targets {
-                withUnsafePointer(to: &target) { pointer in
+                let result = withUnsafePointer(to: &target) { pointer in
                     pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { address in
-                        _ = sendto(fd, payload, payload.count, 0, address, socklen_t(MemoryLayout<sockaddr_in>.size))
+                        sendto(fd, payload, payload.count, 0, address, socklen_t(MemoryLayout<sockaddr_in>.size))
                     }
+                }
+                if result >= 0 {
+                    sent = true
+                } else if errno == EHOSTUNREACH {
+                    unreachable = true
                 }
             }
         }
@@ -65,7 +78,7 @@ enum SSDPDiscovery {
                 hosts.insert(host)
             }
         }
-        return hosts
+        return Result(hosts: hosts, isBlocked: hosts.isEmpty && unreachable && !sent)
     }
 
     private static func address(_ host: String) -> sockaddr_in {

@@ -4,7 +4,7 @@ final class DIDLParser: NSObject, XMLParserDelegate {
     private var fields: [String: String] = [:]
     private var currentKey: String?
     private var currentValue = ""
-    private static let wanted: Set<String> = ["title", "creator", "album", "albumArtURI", "streamContent"]
+    private static let wanted: Set<String> = ["title", "creator", "album", "albumArtURI", "streamContent", "res", "streamInfo"]
 
     static func parse(_ xml: String, host: String) -> NowPlaying {
         guard !xml.isEmpty, xml != "NOT_IMPLEMENTED" else { return .empty }
@@ -21,6 +21,8 @@ final class DIDLParser: NSObject, XMLParserDelegate {
         result.title = fields["title"].nonEmpty.flatMap { $0.contains("://") ? nil : $0 }
         result.artist = fields["creator"].nonEmpty
         result.album = fields["album"].nonEmpty
+        result.resource = fields["res"].nonEmpty
+        result.quality = AudioQuality(streamInfo: fields["streamInfo"])
 
         if let stream = fields["streamContent"].nonEmpty, !stream.hasPrefix("ZPSTR_") {
             let parts = stream.components(separatedBy: " - ")

@@ -13,15 +13,16 @@ struct HeroPlayerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(spacing: 8) {
                 RoomPickerMenu(group: group)
                 Spacer()
+                SourceBadge(source: nowPlaying.source)
                 EqualizerBars(isAnimating: nowPlaying.state.isPlaying, barCount: 4)
                     .opacity(nowPlaying.state.isPlaying ? 0.9 : 0.35)
             }
 
             HStack(spacing: 14) {
-                ArtTile(image: art?.image, isPlaying: nowPlaying.state.isPlaying)
+                ArtTile(image: art?.image, isPlaying: nowPlaying.state.isPlaying, openURL: nowPlaying.source.appURL)
                 TrackInfo(nowPlaying: nowPlaying, fallback: group.name)
             }
 
@@ -29,7 +30,8 @@ struct HeroPlayerView: View {
                 HeroScrubber(group: group, nowPlaying: nowPlaying)
             }
 
-            TransportRow(group: group, isPlaying: nowPlaying.state.isPlaying, showLyrics: $showLyrics)
+            TransportRow(group: group, nowPlaying: nowPlaying)
+            UtilityRow(group: group, nowPlaying: nowPlaying, showLyrics: $showLyrics)
 
             if showLyrics {
                 LyricsView(nowPlaying: nowPlaying)
@@ -82,6 +84,9 @@ private struct TrackInfo: View {
 private struct ArtTile: View {
     let image: NSImage?
     let isPlaying: Bool
+    let openURL: URL?
+
+    @State private var isHovering = false
 
     var body: some View {
         Group {
@@ -99,10 +104,26 @@ private struct ArtTile: View {
             }
         }
         .frame(width: 76, height: 76)
+        .overlay {
+            if openURL != nil && isHovering {
+                ZStack {
+                    Color.black.opacity(0.45)
+                    Image(systemName: "arrow.up.forward.app.fill")
+                        .font(.system(size: 22))
+                }
+                .transition(.opacity)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .shadow(color: .black.opacity(0.35), radius: isPlaying ? 10 : 4, y: isPlaying ? 6 : 2)
         .scaleEffect(isPlaying ? 1 : 0.9)
         .animation(.spring(duration: 0.5, bounce: 0.35), value: isPlaying)
+        .animation(.easeOut(duration: 0.15), value: isHovering)
+        .onHover { isHovering = $0 }
+        .onTapGesture {
+            if let openURL { NSWorkspace.shared.open(openURL) }
+        }
+        .help(openURL == nil ? "" : "Open in Spotify")
     }
 }
 
@@ -130,53 +151,5 @@ private struct Backdrop: View {
             LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
         }
         .animation(.easeInOut(duration: 0.6), value: image)
-    }
-}
-
-private struct TransportRow: View {
-    @Environment(SpeakerStore.self) private var store
-    let group: SonosGroup
-    let isPlaying: Bool
-    @Binding var showLyrics: Bool
-
-    var body: some View {
-        HStack {
-            Button {
-                showLyrics.toggle()
-            } label: {
-                Image(systemName: showLyrics ? "quote.bubble.fill" : "quote.bubble")
-                    .font(.system(size: 14))
-                    .frame(width: 30, height: 30)
-                    .opacity(showLyrics ? 1 : 0.7)
-            }
-            .help(showLyrics ? "Hide lyrics" : "Show lyrics")
-
-            Spacer()
-
-            Button { store.previous(group) } label: {
-                Image(systemName: "backward.fill").font(.system(size: 18)).frame(width: 36, height: 36)
-            }
-
-            Button { store.togglePlayback(group) } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.black)
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 46, height: 46)
-                    .background(Circle().fill(.white))
-                    .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
-            }
-            .padding(.horizontal, 10)
-
-            Button { store.next(group) } label: {
-                Image(systemName: "forward.fill").font(.system(size: 18)).frame(width: 36, height: 36)
-            }
-
-            Spacer()
-
-            MoveMusicMenu(group: group)
-                .frame(width: 30, height: 30)
-        }
-        .buttonStyle(PressableStyle())
     }
 }

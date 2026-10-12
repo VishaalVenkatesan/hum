@@ -36,6 +36,13 @@ struct NowPlaying: Equatable, Sendable {
     var elapsed: TimeInterval?
     var duration: TimeInterval?
     var sampledAt = Date()
+    var resource: String?
+    var source: PlaybackSource = .unknown
+    var quality: AudioQuality?
+    var playMode: PlayMode?
+    var canChangePlayMode = false
+    var crossfade = false
+    var sleepTimerEnd: Date?
 
     static let empty = NowPlaying()
 
@@ -65,4 +72,18 @@ struct SoundSettings: Equatable, Sendable {
     var loudness: Bool
 
     static let flat = SoundSettings(bass: 0, treble: 0, loudness: true)
+}
+
+enum DiscoveryIssue: Equatable, Sendable {
+    case localNetworkBlocked
+    case noSpeakers
+    case unreachable
+
+    var message: String {
+        switch self {
+        case .localNetworkBlocked: "Hum needs Local Network access to find your speakers."
+        case .noSpeakers: "No speakers found on this network."
+        case .unreachable: "Found speakers but couldn't reach them."
+        }
+    }
 }

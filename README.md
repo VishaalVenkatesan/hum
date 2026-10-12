@@ -13,12 +13,15 @@ I also couldn't install Xcode: it needs tens of gigabytes my machine didn't have
 - **Discovery:** finds speakers automatically with SSDP and reads room and group layout from the speakers themselves.
 - **Volume:** a slider for each room, for each speaker inside a group, and for every room at once. Group changes keep the balance between speakers.
 - **Now playing:** artwork, track details, play/pause, skip, and seeking within the track.
+- **Source and quality:** shows where playback comes from (Spotify, AirPlay, Apple Music, TV, Line-In, Radio) and the stream format, such as 16-bit / 44.1 kHz, with a Hi-Res badge when it applies.
+- **Spotify links:** click the artwork to open the track in Spotify, or copy a share link.
+- **Shuffle and repeat:** available when playing from the speaker's queue. During Spotify Connect, Spotify controls these itself.
 - **Lyrics:** time-synced lyrics for the current track, from [LRCLIB](https://lrclib.net).
 - **System integration:** the keyboard media keys and macOS's Now Playing widget in Control Center control the active room.
 - **Call handling:** music is lowered or paused automatically while any app is using a microphone, and restored afterwards.
 - **Rooms:** move playback to another room, add rooms to the current one, or group and ungroup every room.
-- **Sound:** bass, treble and loudness for each speaker.
-- **Sleep timer:** fades the music out and pauses it after 15 to 90 minutes.
+- **Sound and speaker settings:** bass, treble, loudness, crossfade, the status light and the touch-control lock, plus each speaker's model and firmware version.
+- **Sleep timer:** runs on the speaker itself, so it still works if the Mac goes to sleep. While the Mac is awake, Hum also fades the music out over the final 30 seconds.
 - **Global shortcuts:** `⌃⌥↑` / `⌃⌥↓` volume, `⌃⌥Space` play/pause, `⌃⌥←` / `⌃⌥→` previous/next track, `⌃⌥M` mute. Each shows an on-screen indicator.
 
 ## Requirements
@@ -47,6 +50,7 @@ Hum talks to the speakers directly over the local network. It doesn't use a clou
 | `SSDPDiscovery` | Sends an M-SEARCH for `urn:schemas-upnp-org:device:ZonePlayer:1` by UDP multicast and broadcast. |
 | `SonosSOAP`, `SonosController` | UPnP SOAP calls to each speaker on port 1400: AVTransport, RenderingControl and ZoneGroupTopology. |
 | `TopologyParser`, `DIDLParser` | Parse room and group layout and DIDL-Lite track metadata. |
+| `PlaybackSource`, `AudioQuality` | Work out the playback source from transport URIs and service IDs, and the stream format from `r:streamInfo`. |
 | `SpeakerStore` | Observable state: polls every 3 seconds, waits briefly before sending volume changes, and updates the UI immediately on input. |
 | `NowPlayingBridge` | Publishes to `MPNowPlayingInfoCenter` and handles `MPRemoteCommandCenter` commands. |
 | `CallMonitor` | Uses Core Audio to check whether any input device is running. It never accesses audio data. |

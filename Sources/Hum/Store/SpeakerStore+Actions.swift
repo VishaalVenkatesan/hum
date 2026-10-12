@@ -9,6 +9,14 @@ extension SpeakerStore {
         groups.first { $0.id == selectedGroupID } ?? primaryGroup
     }
 
+    var speakerSleepTimerEnd: Date? {
+        groups.compactMap { nowPlaying[$0.id]?.sleepTimerEnd }.max()
+    }
+
+    func cancelSpeakerSleepTimers() {
+        configureSleepTimer(nil, for: groups.filter { nowPlaying[$0.id]?.sleepTimerEnd != nil })
+    }
+
     var canGroupAll: Bool { groups.count > 1 }
 
     var hasGroupedRooms: Bool { groups.contains { $0.members.count > 1 } }

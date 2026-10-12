@@ -63,19 +63,28 @@ private struct MainPage: View {
 private struct EmptyStateView: View {
     @Environment(SpeakerStore.self) private var store
 
+    private static let localNetworkSettings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")
+
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: "hifispeaker.2")
+            Image(systemName: store.issue == .localNetworkBlocked ? "network.slash" : "hifispeaker.2")
                 .font(.system(size: 30))
                 .foregroundStyle(.secondary)
                 .symbolEffect(.pulse, isActive: store.isDiscovering)
-            Text(store.isDiscovering ? "Listening for speakers…" : store.errorMessage ?? "Listening for speakers…")
+            Text(store.isDiscovering ? "Listening for speakers…" : store.issue?.message ?? "Listening for speakers…")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
             if !store.isDiscovering {
-                Button("Try Again") { Task { await store.rediscover() } }
-                    .controlSize(.small)
+                HStack {
+                    if store.issue == .localNetworkBlocked, let url = Self.localNetworkSettings {
+                        Button("Open Settings") { NSWorkspace.shared.open(url) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    Button("Try Again") { Task { await store.rediscover() } }
+                }
+                .controlSize(.small)
             }
         }
     }

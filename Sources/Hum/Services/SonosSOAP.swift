@@ -5,6 +5,7 @@ enum SonosService {
     case renderingControl
     case groupRenderingControl
     case zoneGroupTopology
+    case deviceProperties
 
     var path: String {
         switch self {
@@ -12,6 +13,7 @@ enum SonosService {
         case .renderingControl: "/MediaRenderer/RenderingControl/Control"
         case .groupRenderingControl: "/MediaRenderer/GroupRenderingControl/Control"
         case .zoneGroupTopology: "/ZoneGroupTopology/Control"
+        case .deviceProperties: "/DeviceProperties/Control"
         }
     }
 
@@ -21,6 +23,7 @@ enum SonosService {
         case .renderingControl: "urn:schemas-upnp-org:service:RenderingControl:1"
         case .groupRenderingControl: "urn:schemas-upnp-org:service:GroupRenderingControl:1"
         case .zoneGroupTopology: "urn:schemas-upnp-org:service:ZoneGroupTopology:1"
+        case .deviceProperties: "urn:schemas-upnp-org:service:DeviceProperties:1"
         }
     }
 }
@@ -64,6 +67,13 @@ struct SonosSOAP: Sendable {
         guard let http = response as? HTTPURLResponse else { throw SonosSOAPError.invalidResponse }
         guard http.statusCode == 200 else { throw SonosSOAPError.badStatus(http.statusCode) }
         return SOAPResponseParser.parse(data, action: action)
+    }
+
+    func text(at path: String) async throws -> String {
+        guard let url = URL(string: "http://\(host):\(Self.port)\(path)") else { throw SonosSOAPError.invalidResponse }
+        let (data, response) = try await Self.session.data(from: url)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw SonosSOAPError.invalidResponse }
+        return String(decoding: data, as: UTF8.self)
     }
 
     static func escape(_ value: String) -> String {

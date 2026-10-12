@@ -24,6 +24,7 @@ struct SoundSettingsView: View {
 
             ScrollView {
                 VStack(spacing: 10) {
+                    PlaybackCard()
                     ForEach(store.allMembers) { member in
                         SpeakerSoundCard(member: member)
                     }
@@ -43,8 +44,15 @@ private struct SpeakerSoundCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(member.name)
-                    .font(.system(size: 13, weight: .semibold))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(member.name)
+                        .font(.system(size: 13, weight: .semibold))
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
                 if store.sound[member.id] != nil && store.sound[member.id] != .flat {
                     Button("Reset") { store.resetSound(for: member) }
@@ -63,6 +71,12 @@ private struct SpeakerSoundCard: View {
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
+
+                if let info = store.speakerInfo[member.id] {
+                    Divider()
+                    SwitchRow(title: "Status Light", isOn: info.statusLight) { store.setStatusLight($0, for: member) }
+                    SwitchRow(title: "Lock Touch Controls", isOn: info.buttonsLocked) { store.setButtonsLocked($0, for: member) }
+                }
             } else {
                 ProgressView()
                     .controlSize(.small)
@@ -72,7 +86,54 @@ private struct SpeakerSoundCard: View {
         .padding(12)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .animation(.easeOut(duration: 0.2), value: store.sound[member.id])
-        .task { await store.loadSound(for: member) }
+        .task {
+            async let sound: Void = store.loadSound(for: member)
+            async let info: Void = store.loadSpeakerInfo(for: member)
+            _ = await (sound, info)
+        }
+    }
+
+    private var subtitle: String? {
+        guard let info = store.speakerInfo[member.id] else { return nil }
+        let parts = [info.model, info.firmware.map { "Version \($0)" }].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+private struct PlaybackCard: View {
+    @Environment(SpeakerStore.self) private var store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Crossfade")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Blend the end of one song into the next.")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            ForEach(store.groups) { group in
+                SwitchRow(title: group.name, isOn: store.nowPlaying[group.id]?.crossfade ?? false) {
+                    store.setCrossfade($0, for: group)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct SwitchRow: View {
+    let title: String
+    let isOn: Bool
+    let onChange: (Bool) -> Void
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { isOn }, set: onChange)) {
+            Text(title)
+                .font(.system(size: 12))
+        }
+        .toggleStyle(.switch)
+        .controlSize(.mini)
     }
 }
 

@@ -66,9 +66,8 @@ struct MoveMusicMenu: View {
                 }
             }
         } label: {
-            Image(systemName: "airplayaudio")
-                .font(.system(size: 14))
-                .opacity(targets.isEmpty ? 0.3 : 0.7)
+            Image(systemName: "hifispeaker.arrow.forward")
+                .opacity(targets.isEmpty ? 0.25 : 0.6)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
