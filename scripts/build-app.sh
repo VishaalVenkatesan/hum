@@ -18,6 +18,12 @@ codesign --force --deep --sign - "$APP"
 
 echo "Built $APP"
 
+if [[ "${1:-}" == "--zip" ]]; then
+  rm -f "$ROOT/build/Hum.zip"
+  ditto -c -k --keepParent "$APP" "$ROOT/build/Hum.zip"
+  echo "Packaged $ROOT/build/Hum.zip"
+fi
+
 if [[ "${1:-}" == "--install" ]]; then
   pkill -x Hum || true
   rm -rf /Applications/Hum.app
