@@ -21,6 +21,7 @@ curl -fsSL "$URL" -o "$TMP/Hum.zip"
 ditto -x -k "$TMP/Hum.zip" "$TMP"
 
 pkill -x Hum 2>/dev/null || true
+while pgrep -x Hum >/dev/null; do sleep 0.2; done
 rm -rf /Applications/Hum.app
 mv "$TMP/Hum.app" /Applications/
 xattr -dr com.apple.quarantine /Applications/Hum.app 2>/dev/null || true
